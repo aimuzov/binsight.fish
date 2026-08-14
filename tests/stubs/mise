@@ -1,0 +1,31 @@
+#!/bin/sh
+# Test double for mise: answers the single query binsight makes of it, pointing at the
+# fixture tree so that the linking step has a real directory to walk up into.
+
+case "$*" in
+"ls --installed --json")
+    cat <<EOF
+{
+  "cargo:wireloop": [
+    {
+      "version": "2.1.0",
+      "install_path": "$BINSIGHT_FIXTURES/mise/installs/cargo-wireloop/2.1.0",
+      "installed": true,
+      "active": true
+    }
+  ],
+  "aqua:BurntSushi/ripgrep": [
+    {
+      "version": "15.1.0",
+      "install_path": "$BINSIGHT_FIXTURES/mise/installs/aqua-burnt-sushi-ripgrep/15.1.0",
+      "installed": true,
+      "active": true
+    }
+  ]
+}
+EOF
+    ;;
+*)
+    exit 1
+    ;;
+esac

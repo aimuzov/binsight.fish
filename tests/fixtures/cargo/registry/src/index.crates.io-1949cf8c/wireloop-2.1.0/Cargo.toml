@@ -1,0 +1,5 @@
+[package]
+name = "wireloop"
+version = "2.1.0"
+description = "wireloop moves files over FTP, SFTP and WebDAV"
+edition = "2021"

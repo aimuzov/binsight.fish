@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: fish on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install fish from the release PPA
+        if: runner.os == 'Linux'
+        run: |
+          sudo add-apt-repository -y ppa:fish-shell/release-4
+          sudo apt-get update
+          sudo apt-get install -y fish
+
+      - name: Install fish from homebrew
+        if: runner.os == 'macOS'
+        run: brew install fish
+
+      # The fixtures keep package metadata in JSON, and jq is what reads it
+      - name: Make sure jq is present
+        run: jq --version
+
+      - name: Report the version under test
+        run: fish --version
+
+      - name: Check the syntax of every fish file
+        run: fish --no-config -n functions/*.fish completions/*.fish tests/*.fish
+
+      - name: Install fishtape
+        run: |
+          fish -c 'curl -sSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
+                   fisher install jorgebucaran/fisher jorgebucaran/fishtape'
+
+      - name: Run the tests
+        run: fish -c 'fishtape tests/*.test.fish'

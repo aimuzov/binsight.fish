@@ -1,0 +1,5 @@
+{
+  "name": "tinypkg",
+  "version": "1.4.0",
+  "description": "Reads and writes tiny files"
+}

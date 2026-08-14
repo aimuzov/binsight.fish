@@ -1,0 +1,18 @@
+#!/bin/sh
+# Test double for go: reports a module path for every binary except the toolchain's own,
+# which is what the cmd/ filter in the go source is there to drop.
+
+case "$1" in
+version)
+    case "$3" in
+    */go | */gofmt) printf '\tpath\tcmd/%s\n' "$(basename "$3")" ;;
+    *) printf '\tpath\texample.invalid/%s\n' "$(basename "$3")" ;;
+    esac
+    ;;
+env)
+    exit 0
+    ;;
+*)
+    exit 1
+    ;;
+esac
