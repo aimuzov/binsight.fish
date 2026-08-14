@@ -37,16 +37,20 @@ function bins --description 'Interactive inventory of installed packages, their 
         return 1
     end
 
-    printf '%s\n' $rows >$data
+    _binsight_decorate $rows >$data
 
+    # Only the second field is shown: fzf rejoins the fields it displays with tabs, and a
+    # terminal expands those to the next tab stop, which shakes any column layout apart.
+    # So the row arrives already laid out, and the raw values ride along behind it.
     set -f picked (
         fzf --ansi \
             --delimiter \t \
-            --with-nth 2,3,4,5,6 \
+            --with-nth 2 \
+            --no-hscroll \
             --prompt 'Installed> ' \
             --header 'enter: copy the name · ctrl-o: open the homepage · ctrl-w: print the paths' \
             --preview "fish --no-config --command 'source $self; _binsight_preview $data {1}'" \
-            --preview-window 'right,52%,wrap,border-left' \
+            --preview-window 'right,46%,wrap,border-left' \
             --bind "ctrl-o:execute-silent(fish --no-config --command 'source $self; _binsight_open $data {1}')" \
             --bind "ctrl-w:execute(fish --no-config --command 'source $self; _binsight_paths $data {1}' | less --quit-if-one-screen)" \
             --query "$argv" <$data
@@ -56,8 +60,7 @@ function bins --description 'Interactive inventory of installed packages, their 
 
     test -n "$picked"; or return 0
 
-    # The visible column carries colouring and padding; neither belongs in the clipboard
-    set -f name (string trim -- (_binsight_strip (string split \t -- $picked)[3]))
+    set -f name (string split \t -- $picked)[4]
 
     if command --query pbcopy
         printf '%s' $name | pbcopy
@@ -82,7 +85,7 @@ function _bins_help --description 'Usage text for the installed-package browser'
     echo 'Descriptions come from local metadata only — nothing is fetched over the network.'
 end
 
-function _binsight_collect --description 'Gather packages, attach their binaries, describe them and index the result'
+function _binsight_collect --description 'Gather packages, attach their binaries, describe them and filter the result'
     set -f wanted $argv[1]
     set -f refresh $argv[2]
     set -f system $argv[3]
@@ -107,15 +110,25 @@ function _binsight_collect --description 'Gather packages, attach their binaries
     # so the flag travels under a name of its own
     printf '%s\n' $rows | awk -F'\t' -v OFS='\t' \
         -v wanted="$wanted" -v with_system="$system" -v unmanaged="$unmanaged" '
-        function pad(s, w,   n) { n = length(s); return n >= w ? s : s sprintf("%" (w - n) "s", "") }
-
         wanted != "" && $1 != wanted { next }
         unmanaged == "unmanaged" && $1 != "path" { next }
         with_system != "system" && $1 == "path" && $6 ~ /^\/(usr\/(bin|sbin|libexec)|bin|sbin)\// { next }
+        { print }
+    '
+end
+
+function _binsight_decorate --description 'Lay the rows out for the picker, keeping the raw values behind the layout'
+    printf '%s\n' $argv | awk -F'\t' '
+        function pad(s, w,   n) {
+            n = length(s)
+            if (n > w) return substr(s, 1, w - 1) "…"
+            return s sprintf("%" (w - n) "s", "")
+        }
 
         {
-            printf "%d\t\033[38;5;245m%s\033[0m\t\033[1;36m%s\033[0m\t\033[38;5;245m%s\033[0m\t%s\t%s\t%s\n", \
-                ++i, pad($1, 6), pad($2, 28), pad($3, 12), pad($4, 24), $5, $6
+            display = sprintf("\033[38;5;245m%s\033[0m  \033[1;36m%s\033[0m  \033[38;5;245m%s\033[0m  %s  %s", \
+                pad($1, 5), pad($2, 26), pad($3, 9), pad($4, 16), substr($5, 1, 110))
+            printf "%d\t%s\t%s\n", NR, display, $0
         }
     '
 end
@@ -519,13 +532,14 @@ function _binsight_newer --description 'Whether the second path was touched afte
 end
 
 function _binsight_preview --description 'Render the fzf preview card for one package'
+    # A decorated row is index, the laid out line, then the raw columns it was built from
     set -f row (_binsight_row $argv[1] $argv[2])
-    test (count $row) -ge 6; or return
+    test (count $row) -ge 8; or return
 
-    set -f name (string trim -- (_binsight_strip $row[3]))
-    set -f source (string trim -- (_binsight_strip $row[2]))
-    set -f ver (string trim -- (_binsight_strip $row[4]))
-    set -f provides (string trim -- $row[5])
+    set -f source $row[3]
+    set -f name $row[4]
+    set -f ver $row[5]
+    set -f provides $row[6]
 
     set_color --bold cyan
     echo $name
@@ -535,7 +549,7 @@ function _binsight_preview --description 'Render the fzf preview card for one pa
     set_color --bold
     echo 'Does'
     set_color normal
-    echo "  "(test -n "$row[6]"; and echo $row[6]; or echo 'no description in any local metadata')
+    echo "  "(test -n "$row[7]"; and echo $row[7]; or echo 'no description in any local metadata')
     echo
 
     set_color --bold
@@ -566,7 +580,7 @@ function _binsight_preview --description 'Render the fzf preview card for one pa
     set_color --bold
     echo 'Installed in'
     set_color normal
-    echo "  $row[7]"
+    echo "  $row[8]"
 end
 
 function _binsight_homepage --description 'Homepage for a package, when the catalogue knows one'
@@ -579,7 +593,9 @@ end
 
 function _binsight_open --description 'Open the homepage of a package'
     set -f row (_binsight_row $argv[1] $argv[2])
-    set -f homepage (_binsight_homepage (string trim -- (_binsight_strip $row[3])))
+    test (count $row) -ge 8; or return
+
+    set -f homepage (_binsight_homepage $row[4])
 
     test -n "$homepage"; or return
     command --query open; and command open $homepage
@@ -587,10 +603,10 @@ end
 
 function _binsight_paths --description 'Print where a package and its binaries live'
     set -f row (_binsight_row $argv[1] $argv[2])
-    test (count $row) -ge 7; or return
+    test (count $row) -ge 8; or return
 
-    echo $row[7]
-    for binary in (string split ',' -- (string trim -- $row[5]))
+    echo $row[8]
+    for binary in (string split ',' -- $row[6])
         test -n "$binary"; and command --search $binary 2>/dev/null
     end
 end

@@ -56,9 +56,10 @@ function _bt_shown --description 'One field of a displayed row, as the eye sees 
     _bt_plain (_bt_field $argv[1] $argv[2])
 end
 
-# A displayed row carries the index first, so the name has moved a column to the right
-function _bt_pick --description 'The displayed row whose name matches, out of the rows that follow'
+# A decorated row is index, laid out line, then the raw columns — the name has moved
+# three fields to the right
+function _bt_pick --description 'The decorated row whose name matches, out of the rows that follow'
     for row in $argv[2..]
-        test (_bt_shown $row 3) = "$argv[1]"; and echo $row
+        test (_bt_field $row 4) = "$argv[1]"; and echo $row
     end
 end

@@ -8,6 +8,8 @@ by name.
 bins
 ```
 
+![bins in action](docs/demo.gif)
+
 The list is built from the package managers themselves and from `PATH`, so it cannot drift away
 from what is actually on disk.
 
@@ -144,6 +146,16 @@ fishtape tests/*.test.fish
 
 The suite runs entirely against fixtures and stubbed managers, so it says the same thing on any
 machine.
+
+The recording in this README is scripted, so it can be redone on any machine that has
+[vhs](https://github.com/charmbracelet/vhs) and `ttyd`:
+
+```fish
+cd docs; and vhs demo.tape
+```
+
+It runs in the throwaway fish profile under `docs/demo-profile`, with a clipboard that goes
+nowhere, but against the real packages of whoever records it.
 
 ## License
 

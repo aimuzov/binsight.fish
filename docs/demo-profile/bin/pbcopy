@@ -1,0 +1,3 @@
+#!/bin/sh
+# A clipboard for the recording only: bins says "copied", nothing is actually copied.
+cat >/dev/null

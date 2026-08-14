@@ -16,6 +16,8 @@ stages, fixtures and stubs in the tests.
 functions/bins.fish     everything: sources, linking, descriptions, cache, preview
 completions/bins.fish   option completions
 tests/                  fishtape suites, fixtures per source, stubs for mise and go
+docs/demo.tape          the README recording, replayable with vhs
+docs/demo-profile/      the throwaway fish profile that recording runs in
 ```
 
 `functions/bins.fish` defines several functions in one file. Fish autoloads it by the name of the
@@ -68,6 +70,10 @@ catalogue's entry for termscp does not contain the word FTP, and the author's do
   comparing.
 - **A fish function cannot see the caller's local variables.** Tests overriding a `binsight_*` path
   must set it globally.
+- **fzf rejoins the fields it displays with tabs**, which a terminal expands to the next tab stop
+  and no column layout survives. The row is laid out into one field instead, and only that field is
+  shown; the raw columns ride along behind it. `--no-hscroll` belongs with it — otherwise fzf
+  scrolls each row to its match and the columns shear apart again.
 
 ## Testing
 
